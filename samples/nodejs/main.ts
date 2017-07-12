@@ -1,4 +1,4 @@
-import {Logger} from "component-logger";
+import {Logger} from "complog";
 
 let logger = Logger.create("main");
 logger.log("Hello");

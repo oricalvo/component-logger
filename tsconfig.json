@@ -3,9 +3,12 @@
     "module": "commonjs",
     "target": "es5",
     "sourceMap": true,
-    "declaration": true
+    "declaration": true,
+    "lib": ["dom", "es2015"],
+    "moduleResolution": "node"
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "samples"
   ]
 }

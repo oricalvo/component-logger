@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "complog": "^1.0.1",
     "systemjs": "^0.20.15",
     "typescript": "^2.4.1"
   }

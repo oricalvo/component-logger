@@ -73,10 +73,10 @@ var Logger = (function () {
         var id = (this._id ? "(" + this._id + ")" : "");
         return "" + area + name + id + ">";
     };
+    Logger.ids = {};
+    Logger.AUTO_ID = "AUTO_ID";
     return Logger;
 }());
-Logger.ids = {};
-Logger.AUTO_ID = "AUTO_ID";
 exports.Logger = Logger;
 function noop() {
 }
