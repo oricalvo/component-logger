@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as cli from "build-utils/cli";
-import {copyFile, copyGlob, deleteDirectory} from "build-utils/fs";
+import {copyFile, copyGlob, deleteDirectory, readJSONFile} from "build-utils/fs";
 import {mergeConfig, updateConfig} from "build-utils/config";
 import {exec} from "build-utils/process";
 
@@ -25,23 +25,26 @@ export async function pack() {
     await exec(path.resolve("node_modules/.bin/tsc") + " -p ./tsconfig.pack.json");
 
     await exec("node_modules/.bin/rollup -c build/rollup.config.js");
-    await exec("node_modules/.bin/rollup -c build/rollup.config.js -f es -o package/complog.es2015.js");
+    await exec("node_modules/.bin/rollup -c build/rollup.config.js -f es -o package/fx/complog.es2015.js");
 
-    await copyGlob("./build_tmp/fx/*.d.ts", "./package");
-    await copyFile("./package.json", "package/package.json");
-    await updateConfig("package/package.json", {devDependencies: {}, dependencies: {}}, false);
+    await copyGlob("./build_tmp/fx/*.d.ts", "./package/fx");
+    await copyFile("./package.json", "package/fx/package.json");
+    await updateConfig("package/fx/package.json", {devDependencies: {}, dependencies: {}}, false);
 }
 
 export async function patch() {
     await pack();
 
     await exec("npm version patch", {
-        cwd: "./package",
+        cwd: "./package/fx",
     });
+
+    await copyFile("./readme.md", "package/fx/readme.md");
 
     await exec("npm publish", {
-        cwd: "./package",
+        cwd: "./package/fx",
     });
 
-    await copyFile("package/package.json", "./package.json");
+    const packageJson = await readJSONFile("package/fx/cd ..package.json");
+    await updateConfig("./package.json", {version: packageJson.version}, false);
 }

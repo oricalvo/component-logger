@@ -1,6 +1,6 @@
 export default {
-    entry: 'build_tmp/fx/logger.js',
+    entry: 'build_tmp/fx/index.js',
     format: 'umd',
-    dest: 'package/complog.umd.js',
+    dest: 'package/fx/complog.umd.js',
     moduleName: "complog",
 };
