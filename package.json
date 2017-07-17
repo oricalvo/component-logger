@@ -14,7 +14,9 @@
     "@types/node": "^8.0.11",
     "body-parser": "^1.17.2",
     "build-utils": "^1.0.53",
+    "cors": "^2.8.4",
     "express": "^4.15.3",
+    "lokijs": "^1.5.0",
     "rollup": "^0.45.2",
     "typescript": "^2.4.1"
   },
