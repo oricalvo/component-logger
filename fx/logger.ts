@@ -1,10 +1,31 @@
 export type AUTO_ID = "AUTO_ID";
 
+export interface ILoggerActions {
+    log(...args);
+}
+
+export interface ILoggerArea {
+    (message: string): ILoggerActions;
+    create(type: string): ILoggerType;
+    enable(enabled: boolean|undefined);
+}
+
+export interface ILoggerType {
+    (message: string): ILoggerActions;
+    create(id: number|AUTO_ID): ILogger;
+    enable(enabled: boolean|undefined);
+}
+
+export interface ILogger {
+    (message: string): ILoggerActions;
+    enable(enabled: boolean|undefined);
+}
+
 export class Logger {
-    private _enabled: boolean;
-    private _area: string | undefined;
+    private _parent: Logger;
+    private _enabled: boolean|undefined;
     private _name: string;
-    private _id: number | undefined;
+    private _message: string;
     private _log;
     private _warn;
     private _error;
@@ -20,11 +41,11 @@ export class Logger {
 
     static AUTO_ID = "AUTO_ID";
 
-    constructor(area: string, name: string, id: number) {
-        this._enabled = true;
-        this._area = area;
+    constructor(parent: Logger, name: string) {
+        this._parent = parent;
+        this._enabled = undefined;
         this._name = name;
-        this._id = id;
+        this._message = "";
 
         const prefix = this.buildPrefix();
         this._log = console.log.bind(console, (Logger.options.showLogType ? "LOG " : "") + prefix);
@@ -33,31 +54,45 @@ export class Logger {
         this._prf = console.log.bind(console, (Logger.options.showLogType ? "PRF " : "") + prefix);
     }
 
-    log(message: string) {
-        if(!this._enabled) {
+    enable(enabled: boolean|undefined) {
+        this._enabled = enabled;
+    }
+
+    private isEnabled() {
+        if(this._enabled!==undefined) {
+            return this._enabled;
+        }
+
+        if(this._parent) {
+            return this._parent.isEnabled();
+        }
+
+        return true;
+    }
+
+    get log() {
+        if(!this.isEnabled()) {
             return noop;
         }
 
-        this.serverLog(message);
+        this.serverLog(this._message);
 
-        return this._log.bind(undefined, message);
+        return this._log.bind(undefined, this._message);
     }
 
     private serverLog(message) {
-        const item = {
-            sessionId: Logger._sessionId,
-            area: this._area,
-            name: this._name,
-            id: this._id,
-            message: message,
-        };
-
-        if(this.ensureSession()) {
-            Logger.sendToServer(item);
-        }
-        else {
-            Logger._queue.push(item);
-        }
+        // const item = {
+        //     sessionId: Logger._sessionId,
+        //     name: this.getNames(),
+        //     message: message,
+        // };
+        //
+        // if(this.ensureSession()) {
+        //     Logger.sendToServer(item);
+        // }
+        // else {
+        //     Logger._queue.push(item);
+        // }
     }
 
     private static sendToServer(item) {
@@ -71,7 +106,7 @@ export class Logger {
     }
 
     get warn() {
-        if(!this._enabled) {
+        if(!this.isEnabled()) {
             return noop;
         }
 
@@ -81,7 +116,7 @@ export class Logger {
     }
 
     get error() {
-        if(!this._enabled) {
+        if(!this.isEnabled()) {
             return noop;
         }
 
@@ -144,27 +179,68 @@ export class Logger {
         Object.assign(Logger.options, options);
     }
 
-    static create(name: string, id?: number|AUTO_ID);
-    static create(area: string, name: string, id?: number|AUTO_ID)
-    static create(area, name?, id?) {
-        if(arguments.length == 2) {
-            if(typeof name == "number" || name == Logger.AUTO_ID) {
-                id = name;
-                name = area;
-                area = undefined;
-            }
-        }
-        else if(arguments.length == 1) {
-            name = area;
-            area = undefined;
+    static forArea(area: string): ILoggerArea {
+        const logger = new Logger(null, area);
+
+        const retVal: any = function(message: string) {
+            logger._message = message;
+
+            return logger;
         }
 
-        if(id == Logger.AUTO_ID) {
-            id = Logger.generateUniqueId(area, name);
+        retVal.create = function(name) {
+            return Logger.forType(logger, name);
         }
 
-        const logger = new Logger(area, name, id);
-        return logger;
+        retVal.enable = function(enabled: boolean|undefined) {
+            logger.enable(enabled);
+        }
+
+        return retVal;
+    }
+
+    static forType(parent: Logger, type: string): ILoggerType {
+        const logger = new Logger(parent, type);
+
+        const retVal: any = function(message: string) {
+            logger._message = message;
+
+            return logger;
+        }
+
+        retVal.create = function(id: number|AUTO_ID) {
+            return Logger.forInstance(logger, id);
+        }
+
+        retVal.enable = function(enabled: boolean|undefined) {
+            logger.enable(enabled);
+        }
+
+        return retVal;
+    }
+
+    static forInstance(parent: Logger, id: number|AUTO_ID): ILogger {
+        return Logger.create(parent, id);
+    }
+
+    static create(parent: Logger, name): ILogger {
+        if(name == Logger.AUTO_ID) {
+            name = Logger.generateUniqueId.apply(undefined, parent.getNames());
+        }
+
+        const logger = new Logger(parent, name);
+
+        const retVal: any = function(message: string) {
+            logger._message = message;
+
+            return logger;
+        }
+
+        retVal.enable = function(enabled: boolean|undefined) {
+            logger.enable(enabled);
+        }
+
+        return retVal;
     }
 
     private static generateUniqueId(area: string, name: string) {
@@ -179,11 +255,35 @@ export class Logger {
         return nextId;
     }
 
+    private doGetNames(names: string[]) {
+        if(this._parent) {
+            this._parent.doGetNames(names);
+        }
+
+        names.push(this._name);
+    }
+
+    private getNames() {
+        const names = [];
+
+        this.doGetNames(names);
+
+        return names;
+    }
+
     private buildPrefix() {
-        const area = (this._area ? "[" + this._area + "]" + " " : "");
-        const name = this._name;
-        const id = (this._id ? "(" + this._id + ")" : "");
-        return `${area}${name}${id}>`;
+        const names = this.getNames();
+
+        // for(let i=0; i<names.length; i++) {
+        //     names[i] = names[i] + ">";
+        // }
+
+        return names.join(":") + ">";
+
+        // const parent = (this._parent ? "[" + this._parent.buildPrefix() + "]" + " " : "");
+        // const name = this._name;
+        // //const id = (this._id ? "(" + this._id + ")" : "");
+        // return `${parent}${name}>`;
     }
 }
 

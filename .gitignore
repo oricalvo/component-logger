@@ -2,3 +2,7 @@
 node_modules
 package
 build_tmp
+fx/*.js
+fx/*.js.map
+fx/*.d.ts
+yarn-error.log

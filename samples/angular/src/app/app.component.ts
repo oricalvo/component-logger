@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import {Logger} from "complog";
+import {appLogger} from "./logger";
 
-const logger = Logger.create("AppComponent");
+const logger = appLogger.create("AppComponent");
 
 @Component({
   selector: 'app-root',
@@ -10,6 +11,6 @@ const logger = Logger.create("AppComponent");
 })
 export class AppComponent {
   constructor() {
-    logger.log("ctor");
+    logger("ctor").log();
   }
 }

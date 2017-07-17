@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import {Logger} from "complog";
+import {appLogger} from "../logger";
 
 @Component({
   selector: 'app-clock',
@@ -7,21 +8,21 @@ import {Logger} from "complog";
   styleUrls: ['./clock.component.css']
 })
 export class ClockComponent implements OnInit {
-  logger = Logger.create("ClockComponent", Logger.AUTO_ID);
+  logger = appLogger.create("ClockComponent").create("AUTO_ID");
 
   constructor() {
-    this.logger.log("ctor")();
+    this.logger("ctor").log();
   }
 
   ngOnInit() {
   }
 
   doSomething() {
-    this.logger.log("doSomething")();
+    this.logger("doSomething").log();
 
-    this.logger.profile("doSomething", ()=> {
-      return delay(2500);
-    });
+    // this.logger.profile("doSomething", ()=> {
+    //   return delay(2500);
+    // });
   }
 }
 
