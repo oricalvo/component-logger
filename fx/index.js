@@ -1,5 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var logger_1 = require("./logger");
-exports.Logger = logger_1.Logger;
+exports.forArea = logger_1.forArea;
 //# sourceMappingURL=index.js.map

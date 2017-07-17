@@ -1,23 +1,28 @@
-export type AUTO_ID = "AUTO_ID";
+export class AutoId {
+}
+
+export const AUTO_ID = new AutoId();
 
 export interface ILoggerActions {
-    log(...args);
+    log();
+    warn();
+    error();
 }
 
 export interface ILoggerArea {
-    (message: string): ILoggerActions;
+    (...args): ILoggerActions;
     create(type: string): ILoggerType;
     enable(enabled: boolean|undefined);
 }
 
 export interface ILoggerType {
-    (message: string): ILoggerActions;
-    create(id: number|AUTO_ID): ILogger;
+    (...args): ILoggerActions;
+    create(name: string|AutoId): ILogger;
     enable(enabled: boolean|undefined);
 }
 
 export interface ILogger {
-    (message: string): ILoggerActions;
+    (...args): ILoggerActions;
     enable(enabled: boolean|undefined);
 }
 
@@ -25,7 +30,7 @@ export class Logger {
     private _parent: Logger;
     private _enabled: boolean|undefined;
     private _name: string;
-    private _message: string;
+    private _args: any[];
     private _log;
     private _warn;
     private _error;
@@ -39,13 +44,10 @@ export class Logger {
         showLogType: false,
     }
 
-    static AUTO_ID = "AUTO_ID";
-
     constructor(parent: Logger, name: string) {
         this._parent = parent;
         this._enabled = undefined;
         this._name = name;
-        this._message = "";
 
         const prefix = this.buildPrefix();
         this._log = console.log.bind(console, (Logger.options.showLogType ? "LOG " : "") + prefix);
@@ -75,9 +77,9 @@ export class Logger {
             return noop;
         }
 
-        this.serverLog(this._message);
+        this.serverLog(this._args);
 
-        return this._log.bind(undefined, this._message);
+        return this._log.bind.apply(this._log, [undefined].concat(this._args));
     }
 
     private serverLog(message) {
@@ -179,36 +181,16 @@ export class Logger {
         Object.assign(Logger.options, options);
     }
 
-    static forArea(area: string): ILoggerArea {
-        const logger = new Logger(null, area);
-
-        const retVal: any = function(message: string) {
-            logger._message = message;
-
-            return logger;
-        }
-
-        retVal.create = function(name) {
-            return Logger.forType(logger, name);
-        }
-
-        retVal.enable = function(enabled: boolean|undefined) {
-            logger.enable(enabled);
-        }
-
-        return retVal;
-    }
-
     static forType(parent: Logger, type: string): ILoggerType {
         const logger = new Logger(parent, type);
 
-        const retVal: any = function(message: string) {
-            logger._message = message;
+        const retVal: any = function(...args) {
+            logger._args = args;
 
             return logger;
         }
 
-        retVal.create = function(id: number|AUTO_ID) {
+        retVal.create = function(id: number|AutoId) {
             return Logger.forInstance(logger, id);
         }
 
@@ -219,19 +201,19 @@ export class Logger {
         return retVal;
     }
 
-    static forInstance(parent: Logger, id: number|AUTO_ID): ILogger {
+    static forInstance(parent: Logger, id: number|AutoId): ILogger {
         return Logger.create(parent, id);
     }
 
     static create(parent: Logger, name): ILogger {
-        if(name == Logger.AUTO_ID) {
+        if(name == AUTO_ID) {
             name = Logger.generateUniqueId.apply(undefined, parent.getNames());
         }
 
         const logger = new Logger(parent, name);
 
-        const retVal: any = function(message: string) {
-            logger._message = message;
+        const retVal: any = function(...args) {
+            logger._args = args;
 
             return logger;
         }
@@ -292,4 +274,24 @@ function noop() {
 
 export interface LoggerOptions {
     showLogType?: boolean;
+}
+
+export function forArea(area: string): ILoggerArea {
+    const logger = new Logger(null, area);
+
+    const retVal: any = function(...args) {
+        logger["_args"] = args;
+
+        return logger;
+    }
+
+    retVal.create = function(name) {
+        return Logger.forType(logger, name);
+    }
+
+    retVal.enable = function(enabled: boolean|undefined) {
+        logger.enable(enabled);
+    }
+
+    return retVal;
 }
